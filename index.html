@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>BCCONNECT</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
+    
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-storage-compat.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --text-main: #111111;
+            --text-muted: #71717a;
+            --border-color: #eaeaea;
+            --hover-bg: #f4f4f5;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Prompt', sans-serif;
+        }
+
+        body {
+            background-color: #f0f0f0; /* พื้นหลังข้างนอกสุดสำหรับจอใหญ่ */
+            display: flex;
+            justify-content: center;
+            color: var(--text-main);
+        }
+
+        /* คุมขนาดให้พอดีมือถือ */
+        .app-container {
+            width: 100%;
+            max-width: 480px;
+            background-color: var(--bg-color);
+            min-height: 100vh;
+            border-left: 1px solid var(--border-color);
+            border-right: 1px solid var(--border-color);
+            position: relative;
+            box-shadow: 0 0 20px rgba(0,0,0,0.05);
+        }
+
+        /* ส่วนหัว (Header) */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(8px);
+            z-index: 100;
+        }
+
+        .logo {
+            font-family: 'Inter', sans-serif;
+            font-weight: 600;
+            font-size: 1.2rem;
+            letter-spacing: -0.5px;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+        }
+
+        .icon-btn {
+            background: none;
+            border: none;
+            font-size: 1.4rem;
+            cursor: pointer;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            position: relative;
+            transition: opacity 0.2s;
+        }
+
+        .icon-btn:hover { opacity: 0.7; }
+
+        .notification-dot {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            width: 8px;
+            height: 8px;
+            background-color: var(--text-main);
+            border-radius: 50%;
+        }
+
+        /* ส่วนสร้างโพสต์ */
+        .create-post {
+            padding: 20px;
+            border-bottom: 8px solid var(--hover-bg);
+        }
+
+        .create-post textarea {
+            width: 100%;
+            border: none;
+            resize: none;
+            font-size: 1rem;
+            outline: none;
+            min-height: 60px;
+            background: transparent;
+        }
+
+        .create-post textarea::placeholder { color: var(--text-muted); }
+
+        .post-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 12px;
+        }
+
+        .upload-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .submit-btn {
+            background-color: var(--text-main);
+            color: var(--bg-color);
+            border: none;
+            padding: 8px 20px;
+            border-radius: 4px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .submit-btn:hover { background-color: #333; }
+
+        /* ส่วนฟีดโพสต์ */
+        .feed-header {
+            padding: 16px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .feed-title { font-size: 0.9rem; font-weight: 600; color: var(--text-muted); }
+
+        .post-card {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .post-user-info {
+            display: flex;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .avatar {
+            width: 36px;
+            height: 36px;
+            background-color: var(--hover-bg);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 12px;
+            font-size: 1.2rem;
+        }
+
+        .username {
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        .timestamp {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-left: 8px;
+        }
+
+        .post-content {
+            font-size: 0.95rem;
+            line-height: 1.5;
+            margin-bottom: 16px;
+        }
+
+        .post-image {
+            width: 100%;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            display: none; /* ซ่อนไว้จนกว่าจะมีรูป */
+            border: 1px solid var(--border-color);
+        }
+
+        .post-interaction {
+            display: flex;
+            gap: 20px;
+            color: var(--text-muted);
+        }
+
+        .action-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: color 0.2s;
+        }
+
+        .action-item:hover { color: var(--text-main); }
+
+        /* ส่วนแสดงความคิดเห็น (ซ่อนเป็นค่าเริ่มต้น) */
+        .comments-section {
+            display: none; /* ซ่อนไว้ ต้องกดถึงจะเห็น */
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px dashed var(--border-color);
+        }
+
+        .comment {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 12px;
+            font-size: 0.9rem;
+        }
+
+        .comment-user { font-weight: 600; }
+        
+        .comment-input-area {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .comment-input-area input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            outline: none;
+        }
+
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <div class="header">
+        <div class="logo">BCCONNECT</div>
+        <div class="header-actions">
+            <button class="icon-btn" onclick="shuffleFeed()" title="Randomize Feed">
+                <i class="ph ph-shuffle"></i>
+            </button>
+            <button class="icon-btn" title="Notifications">
+                <i class="ph ph-bell"></i>
+                <div class="notification-dot"></div>
+            </button>
+            <button class="icon-btn" title="Profile">
+                <i class="ph ph-user"></i>
+            </button>
+        </div>
+    </div>
+
+    <div class="create-post">
+        <textarea id="postText" placeholder="มีแพลนไปไหน หรืออยากคุยเรื่องอะไร?"></textarea>
+        <div class="post-actions">
+            <label class="upload-btn">
+                <i class="ph ph-image"></i>
+                <span>แนบรูปภาพ</span>
+                <input type="file" id="imageUpload" accept="image/*" class="hidden">
+            </label>
+            <button class="submit-btn" onclick="createPost()">โพสต์</button>
+        </div>
+    </div>
+
+    <div class="feed-header">
+        <span class="feed-title">LATEST DISCUSSIONS</span>
+    </div>
+    
+    <div id="feedContainer">
+        <div class="post-card">
+            <div class="post-user-info">
+                <div class="avatar"><i class="ph ph-user"></i></div>
+                <div>
+                    <span class="username">@art_major99</span>
+                    <span class="timestamp">10m ago</span>
+                </div>
+            </div>
+            <div class="post-content">
+                หาเพื่อนไปนั่งสเก็ตช์ภาพเล่นแถวสระน้ำหลังมอมื้อเย็นนี้ครับ มีใครสนใจแวะมาจอยกันได้นะ
+            </div>
+            <div class="post-interaction">
+                <div class="action-item" onclick="toggleComments(this)">
+                    <i class="ph ph-chat-circle"></i>
+                    <span>2 ตอบกลับ</span>
+                </div>
+            </div>
+            
+            <div class="comments-section">
+                <div class="comment">
+                    <span class="comment-user">@canvas_ninja:</span>
+                    <span>ไปครับ เดี๋ยวเลิกคลาสแล้วตามไป</span>
+                </div>
+                <div class="comment-input-area">
+                    <input type="text" placeholder="พิมพ์การตอบโต้...">
+                    <button class="submit-btn" style="padding: 6px 12px; font-size: 0.8rem;">ส่ง</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="post-card">
+            <div class="post-user-info">
+                <div class="avatar"><i class="ph ph-user"></i></div>
+                <div>
+                    <span class="username">@admin_bc</span>
+                    <span class="timestamp">1h ago</span>
+                </div>
+            </div>
+            <div class="post-content">
+                อัปเดตระบบแล้วนะครับ สามารถกดปุ่มสุ่มฟีด (Shuffle) ด้านบนขวาเพื่อสุ่มกระทู้เก่าๆ ขึ้นมาอ่านได้เลย!
+            </div>
+            <img src="https://images.unsplash.com/photo-1499951360447-b19be8fe80f5?auto=format&fit=crop&q=80&w=800" class="post-image" style="display: block;">
+            <div class="post-interaction">
+                <div class="action-item" onclick="toggleComments(this)">
+                    <i class="ph ph-chat-circle"></i>
+                    <span>ตอบกลับ</span>
+                </div>
+            </div>
+            <div class="comments-section">
+                <div class="comment-input-area">
+                    <input type="text" placeholder="พิมพ์การตอบโต้...">
+                    <button class="submit-btn" style="padding: 6px 12px; font-size: 0.8rem;">ส่ง</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ==========================================
+    // การตั้งค่า Firebase (นำ Config จาก Console มาใส่ตรงนี้)
+    // ==========================================
+    const firebaseConfig = {
+        apiKey: "YOUR_API_KEY",
+        authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+        projectId: "YOUR_PROJECT_ID",
+        storageBucket: "YOUR_PROJECT_ID.appspot.com",
+        messagingSenderId: "YOUR_SENDER_ID",
+        appId: "YOUR_APP_ID"
+    };
+
+    // เปิดใช้งานโค้ดด้านล่างนี้เมื่อใส่ Config แล้ว
+    /*
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const storage = firebase.storage();
+    */
+
+    // ==========================================
+    // ฟังก์ชันจัดการ UI (ไม่ต้องใช้ Firebase ก็รันดูตัวอย่างได้)
+    // ==========================================
+
+    // โค้ดเนมลับ (Mockup สำหรับ User ปัจจุบัน)
+    const currentUser = "@guest_user_" + Math.floor(Math.random() * 1000);
+
+    // เปิด-ปิดคอมเมนต์ (ซ่อนไว้ต้องกดดู)
+    function toggleComments(element) {
+        const commentSection = element.parentElement.nextElementSibling;
+        if (commentSection.style.display === "block") {
+            commentSection.style.display = "none";
+        } else {
+            commentSection.style.display = "block";
+        }
+    }
+
+    // สุ่มฟีด (Randomize)
+    function shuffleFeed() {
+        const feedContainer = document.getElementById('feedContainer');
+        const posts = Array.from(feedContainer.children);
+        
+        // อัลกอริทึมสุ่ม
+        for (let i = posts.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            feedContainer.appendChild(posts[j]);
+        }
+        
+        // เพิ่มลูกเล่นให้ดูเหมือนกำลังโหลดสุ่ม
+        feedContainer.style.opacity = "0.3";
+        setTimeout(() => {
+            feedContainer.style.opacity = "1";
+        }, 300);
+    }
+
+    // สร้างโพสต์ใหม่ (เบื้องต้นจำลองลง UI, ถ้ามี Firebase ให้เขียนลง DB)
+    function createPost() {
+        const text = document.getElementById('postText').value;
+        const fileInput = document.getElementById('imageUpload');
+        const hasImage = fileInput.files && fileInput.files[0];
+
+        if (!text && !hasImage) return;
+
+        const newPost = document.createElement('div');
+        newPost.className = 'post-card';
+        
+        // โครงสร้างโพสต์ใหม่
+        let postHTML = `
+            <div class="post-user-info">
+                <div class="avatar"><i class="ph ph-user"></i></div>
+                <div>
+                    <span class="username">${currentUser}</span>
+                    <span class="timestamp">Just now</span>
+                </div>
+            </div>
+            <div class="post-content">${text.replace(/\n/g, '<br>')}</div>
+        `;
+
+        if (hasImage) {
+            const imgURL = URL.createObjectURL(fileInput.files[0]);
+            postHTML += `<img src="${imgURL}" class="post-image" style="display: block;">`;
+        }
+
+        postHTML += `
+            <div class="post-interaction">
+                <div class="action-item" onclick="toggleComments(this)">
+                    <i class="ph ph-chat-circle"></i>
+                    <span>ตอบกลับ</span>
+                </div>
+            </div>
+            <div class="comments-section">
+                <div class="comment-input-area">
+                    <input type="text" placeholder="พิมพ์การตอบโต้...">
+                    <button class="submit-btn" style="padding: 6px 12px; font-size: 0.8rem;">ส่ง</button>
+                </div>
+            </div>
+        `;
+
+        newPost.innerHTML = postHTML;
+        
+        // แทรกไว้บนสุดของฟีด
+        const feedContainer = document.getElementById('feedContainer');
+        feedContainer.insertBefore(newPost, feedContainer.firstChild);
+
+        // เคลียร์ค่า
+        document.getElementById('postText').value = '';
+        fileInput.value = '';
+    }
+</script>
+
+</body>
+</html>
